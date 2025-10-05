@@ -46,9 +46,16 @@ const sendMail = async (options) => {
   if (useSendGrid) {
     try {
       const from = options.from;
-      const sgFrom = typeof from === 'string'
-        ? { email: from }
-        : { email: from.email || from.address, name: from.name };
+      let sgFrom;
+      if (typeof from === 'string') {
+        sgFrom = from.trim();
+      } else if (from?.email) {
+        sgFrom = from.name ? { email: from.email.trim(), name: from.name } : from.email.trim();
+      } else if (from?.address) {
+        sgFrom = from.name ? { email: from.address.trim(), name: from.name } : from.address.trim();
+      } else {
+        throw new Error('Invalid from address configuration');
+      }
 
       const replyTo = options.replyTo
         ? {
@@ -58,12 +65,21 @@ const sendMail = async (options) => {
         : undefined;
 
       const sgOptions = {
-        to: options.to,
+        to: Array.isArray(options.to)
+          ? options.to.map((value) => (typeof value === 'string' ? value.trim() : value))
+          : typeof options.to === 'string'
+            ? options.to.trim()
+            : options.to,
         from: sgFrom,
-        replyTo,
         subject: options.subject,
         text: options.text,
       };
+
+      if (replyTo?.email) {
+        sgOptions.replyTo = replyTo.name ? { email: replyTo.email, name: replyTo.name } : replyTo.email;
+      }
+
+      console.log('SendGrid payload', JSON.stringify(sgOptions));
 
       await sgMail.send(sgOptions);
       return;
@@ -106,8 +122,8 @@ app.post('/api/contact', async (req, res) => {
 
   const emailSubject = subject && subject.trim().length > 0 ? subject.trim() : '新しいお問い合わせ';
 
-  const fromAddress = process.env.MAIL_FROM || process.env.SMTP_USER;
-  const fromName = process.env.MAIL_FROM_NAME;
+  const fromAddress = (process.env.MAIL_FROM || process.env.SMTP_USER || '').trim();
+  const fromName = process.env.MAIL_FROM_NAME?.trim();
 
   const mailOptions = {
     from: fromName ? { name: fromName, email: fromAddress } : fromAddress,
