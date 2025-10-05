@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const helmet = require('helmet');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -28,6 +29,15 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN?.split(',').map((value) => value.trim()) || true,
 }));
 app.use(express.json());
+app.use(
+  express.static(path.join(__dirname, '..'), {
+    dotfiles: 'ignore',
+  })
+);
+
+app.get('/', (_, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok' });
