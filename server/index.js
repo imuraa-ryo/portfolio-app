@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
 const helmet = require('helmet');
 const path = require('path');
 require('dotenv').config();
@@ -8,21 +7,49 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const requiredEnv = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'CONTACT_TO'];
-const missing = requiredEnv.filter((name) => !process.env[name]);
+const SENDGRID_API_KEY =
+  process.env.SENDGRID_API_KEY ||
+  (process.env.SMTP_HOST === 'smtp.sendgrid.net' ? process.env.SMTP_PASS : undefined);
+const useSendGrid = Boolean(SENDGRID_API_KEY);
+const nodemailer = useSendGrid ? null : require('nodemailer');
+const sgMail = useSendGrid ? require('@sendgrid/mail') : null;
+
+if (useSendGrid) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
+
+const baseRequiredEnv = ['CONTACT_TO'];
+const smtpRequired = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
+const sendgridRequired = ['MAIL_FROM'];
+
+const missing = [
+  ...baseRequiredEnv,
+  ...(useSendGrid ? sendgridRequired : smtpRequired),
+].filter((name) => !process.env[name]);
 if (missing.length > 0) {
   console.warn(`Warning: missing required environment variables: ${missing.join(', ')}`);
 }
+let transporter;
+if (!useSendGrid) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const sendMail = async (options) => {
+  if (useSendGrid) {
+    await sgMail.send(options);
+    return;
+  }
+
+  await transporter.sendMail(options);
+};
 
 app.use(helmet());
 app.use(cors({
@@ -68,7 +95,7 @@ app.post('/api/contact', async (req, res) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMail(mailOptions);
     return res.status(200).json({ message: 'success' });
   } catch (error) {
     console.error('Failed to send contact email:', error);
