@@ -44,8 +44,35 @@ if (!useSendGrid) {
 
 const sendMail = async (options) => {
   if (useSendGrid) {
-    await sgMail.send(options);
-    return;
+    try {
+      const replyTo = options.replyTo
+        ? {
+            email: options.replyTo.address || options.replyTo.email || options.replyTo,
+            name: options.replyTo.name,
+          }
+        : undefined;
+
+      const from = options.from;
+      const sgFrom = typeof from === 'string'
+        ? { email: from }
+        : { email: from.address || from.email, name: from.name };
+
+      const sgOptions = {
+        to: options.to,
+        from: sgFrom,
+        replyTo,
+        subject: options.subject,
+        text: options.text,
+      };
+
+      await sgMail.send(sgOptions);
+      return;
+    } catch (error) {
+      if (error.response?.body) {
+        console.error('SendGrid response error:', error.response.body);
+      }
+      throw error;
+    }
   }
 
   await transporter.sendMail(options);
@@ -77,11 +104,14 @@ app.post('/api/contact', async (req, res) => {
     return res.status(400).json({ message: '必須項目（お名前、メールアドレス、ご相談内容）を入力してください。' });
   }
 
-  const emailSubject = subject && subject.trim().length > 0 ? subject.trim() : '新しいお問い合わせが届きました';
+  const emailSubject = subject && subject.trim().length > 0 ? subject.trim() : '新しいお問い合わせ';
+
+  const fromAddress = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const fromName = process.env.MAIL_FROM_NAME;
 
   const mailOptions = {
-    from: process.env.MAIL_FROM || process.env.SMTP_USER,
-    replyTo: `${name} <${email}>`,
+    from: fromName ? { name: fromName, address: fromAddress } : fromAddress,
+    replyTo: { name, address: email },
     to: process.env.CONTACT_TO,
     subject: emailSubject,
     text: [
@@ -92,6 +122,11 @@ app.post('/api/contact', async (req, res) => {
       '--- ご相談内容 ---',
       message,
     ].join('\n'),
+    meta: {
+      fromAddress,
+      fromName,
+      replyTo,
+    },
   };
 
   try {
