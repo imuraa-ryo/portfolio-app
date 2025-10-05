@@ -45,32 +45,24 @@ if (!useSendGrid) {
 const sendMail = async (options) => {
   if (useSendGrid) {
     try {
+      const from = options.from;
+      const sgFrom = typeof from === 'string'
+        ? { email: from }
+        : { email: from.email || from.address, name: from.name };
+
       const replyTo = options.replyTo
         ? {
-            email: options.replyTo.address || options.replyTo.email || options.replyTo,
+            email: options.replyTo.email || options.replyTo.address || options.replyTo,
             name: options.replyTo.name,
           }
         : undefined;
 
-      const from = options.from;
-      const sgFrom = typeof from === 'string'
-        ? { email: from }
-        : { email: from.address || from.email, name: from.name };
-
-      const recipients = Array.isArray(options.to)
-        ? options.to.map((item) => (typeof item === 'string' ? { email: item } : item))
-        : [{ email: options.to }];
-
       const sgOptions = {
-        personalizations: [
-          {
-            to: recipients,
-            subject: options.subject,
-          },
-        ],
+        to: options.to,
         from: sgFrom,
         replyTo,
-        content: [{ type: 'text/plain', value: options.text }],
+        subject: options.subject,
+        text: options.text,
       };
 
       await sgMail.send(sgOptions);
