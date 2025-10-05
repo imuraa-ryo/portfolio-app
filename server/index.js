@@ -57,12 +57,20 @@ const sendMail = async (options) => {
         ? { email: from }
         : { email: from.address || from.email, name: from.name };
 
+      const recipients = Array.isArray(options.to)
+        ? options.to.map((item) => (typeof item === 'string' ? { email: item } : item))
+        : [{ email: options.to }];
+
       const sgOptions = {
-        to: Array.isArray(options.to) ? options.to : { email: options.to },
+        personalizations: [
+          {
+            to: recipients,
+            subject: options.subject,
+          },
+        ],
         from: sgFrom,
         replyTo,
-        subject: options.subject,
-        text: options.text,
+        content: [{ type: 'text/plain', value: options.text }],
       };
 
       await sgMail.send(sgOptions);
@@ -110,7 +118,7 @@ app.post('/api/contact', async (req, res) => {
   const fromName = process.env.MAIL_FROM_NAME;
 
   const mailOptions = {
-    from: fromName ? { name: fromName, address: fromAddress } : fromAddress,
+    from: fromName ? { name: fromName, email: fromAddress } : fromAddress,
     replyTo: { name, email },
     to: process.env.CONTACT_TO,
     subject: emailSubject,
