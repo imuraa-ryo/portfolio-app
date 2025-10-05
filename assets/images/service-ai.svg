@@ -1,0 +1,7 @@
+<svg width="480" height="320" viewBox="0 0 480 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="480" height="320" rx="24" fill="#F5F6F8" />
+  <rect x="60" y="60" width="360" height="200" rx="16" fill="#E1E4EB" />
+  <path d="M60 210h360" stroke="#D2D7E0" stroke-width="2" stroke-linecap="round" />
+  <text x="80" y="120" font-family="'Manrope', 'Noto Sans JP', sans-serif" font-size="28" fill="#191919">AI consulting</text>
+  <text x="80" y="160" font-family="'Manrope', 'Noto Sans JP', sans-serif" font-size="18" fill="#555555">Automation / Efficiency</text>
+</svg>
