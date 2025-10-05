@@ -58,7 +58,7 @@ const sendMail = async (options) => {
         : { email: from.address || from.email, name: from.name };
 
       const sgOptions = {
-        to: options.to,
+        to: Array.isArray(options.to) ? options.to : { email: options.to },
         from: sgFrom,
         replyTo,
         subject: options.subject,
@@ -111,7 +111,7 @@ app.post('/api/contact', async (req, res) => {
 
   const mailOptions = {
     from: fromName ? { name: fromName, address: fromAddress } : fromAddress,
-    replyTo: { name, address: email },
+    replyTo: { name, email },
     to: process.env.CONTACT_TO,
     subject: emailSubject,
     text: [
@@ -122,11 +122,6 @@ app.post('/api/contact', async (req, res) => {
       '--- ご相談内容 ---',
       message,
     ].join('\n'),
-    meta: {
-      fromAddress,
-      fromName,
-      replyTo,
-    },
   };
 
   try {
